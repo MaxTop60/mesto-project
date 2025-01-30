@@ -1,0 +1,9 @@
+.popup__form {
+  margin-top: 27px;
+}
+
+.popup__error-text {
+  color: red;
+  font-size: 12px;
+}
+
