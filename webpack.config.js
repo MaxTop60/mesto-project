@@ -30,7 +30,7 @@ module.exports = {
           },
       
        {
-        test: /\.(png|jpe?g|gif|svg)$/, // Обработка изображений
+        test: /\.(png|jpeg|jpg|gif|svg)$/, // Обработка изображений
         use: [
           {
             loader: 'url-loader',
