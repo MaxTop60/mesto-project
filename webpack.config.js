@@ -30,13 +30,13 @@ module.exports = {
           },
       
        {
-        test: /\.(png|jpeg|jpg|gif|svg)$/, // Обработка изображений
+        test: /\.(png|jpg|gif|svg)$/, // Обработка изображений
         use: [
           {
-            loader: 'url-loader',
+            loader: 'file-loader',
             options: {
               limit: 8192, // Если файл меньше 8kb, он будет встроен как base64
-              name: '[name].[hash:8].[ext]', // Имя выходного файла
+              name: '[name].[ext]', // Имя выходного файла
               outputPath: 'images/', // Папка для выходных изображений
             },
           },
@@ -49,7 +49,7 @@ module.exports = {
           {
             loader: 'file-loader',
             options: {
-              name: '[name].[hash:8].[ext]', // Имя выходного файла
+              name: '[name].[ext]', // Имя выходного файла
               outputPath: 'fonts/', // Папка для выходных шрифтов
             },
           },
