@@ -11,12 +11,26 @@ import '../images/like-active.svg';
 import '../images/like-inactive.svg';
 import '../images/logo.svg';
 import '../pages/index.css';
-import { initialCards } from './cards.js';
+import { getUser } from './api.js';
+import { getInitialCards } from './api.js';
+import { patchProfile } from './api.js';
+import { postCard } from './api.js';
+import { deleteCard } from './api.js';
+import { putLike } from './api.js';
+import { deleteLike } from './api.js';
+import { patchAvatar } from './api.js';
 
 
 // @todo: DOM узлы
 const name = document.querySelector('.profile__title');
 const description = document.querySelector('.profile__description');
+let initialCards = await getInitialCards();
+
+const avatarPopup = document.querySelector('.popup_type_avatar');
+const avatarEditButton = document.querySelector('.profile__image');
+const avatarPopupClose = avatarPopup.querySelector('.popup__close');
+const avatarFormElement = avatarPopup.querySelector('.popup__form');
+const avatarLink = avatarPopup.querySelector('.popup__input_type_url');
 
 const profilePopup = document.querySelector('.popup_type_edit');
 const profileEditButton = document.querySelector('.profile__edit-button');
@@ -44,7 +58,13 @@ const placesList = document.querySelector('.places__list');
 
 const forms = document.querySelectorAll('.popup__form');
 const popups = document.querySelectorAll('.popup');
-            
+
+let user = await getUser()
+           
+name.innerText = user.name;
+description.innerText = user.about;
+avatarEditButton.style.backgroundImage = `url(${user.avatar})`;
+
 
 forms.forEach(form => {
     const inputs = form.querySelectorAll('input'); // Получаем только поля ввода текущей формы
@@ -139,12 +159,22 @@ function createCard(card) {
         cardOpen(card);
     })
 
+    if (card.owner.name != user.name) {
+        elem.querySelector('.card__delete-button').classList.add('delete-disabled');
+    }
+
+    elem.querySelector('.card__like-number').innerText = card.likes.length;
+    cardLike(elem, card);
+
+    card.likes.forEach(function(el) {
+        if (el._id == user._id) {
+            elem.querySelector('.card__like-button').classList.add('card__like-button_is-active');
+        }
+    }) 
+
     return elem;
 }
 
-// @todo: Функция удаления карточки
-
-// @todo: Вывести карточки на страницу
 function openModal(popup) {
     popup.classList.add('popup_is-opened');
     const inputs = popup.querySelectorAll('input');
@@ -163,37 +193,43 @@ function closeModal(popup) {
 function handleProfileFormSubmit(evt) {
     evt.preventDefault(); // Эта строчка отменяет стандартную отправку формы.
 
+    profilePopup.querySelector('.popup__button').innerHTML = 'Сохранение...';
+
     let profileNameValue = profileName.value;
     let profileDescriptionValue = profileDesctiption.value;
 
     name.textContent = profileNameValue;
     description.textContent = profileDescriptionValue;
 
+    patchProfile(profileNameValue, profileDescriptionValue).finally(() => {
+        profilePopup.querySelector('.popup__button').innerHTML = 'Сохранить';
+    });
+
     closeModal(profilePopup);
 }
 
-function cardLike() {
-    if (initialCards.length <= 6) {
-        cardLikeButtons = document.querySelectorAll('.card__like-button');
-        cardLikeButtons.forEach(function (elem) {
-            elem.addEventListener('click', function () {
-                elem.classList.toggle('card__like-button_is-active');
-            })
-        })
-    } else {
-        cardLikeButtons = document.querySelector('.card__like-button');
-        cardLikeButtons.addEventListener('click', function () {
-            cardLikeButtons.classList.toggle('card__like-button_is-active');
-        })
-    }
+function cardLike(temp, card) {
+
+    let cardLikeButton = temp.querySelector('.card__like-button');
+    let like_number = temp.querySelector('.card__like-number');
+    cardLikeButton.addEventListener('click', async function () {
+        if(!cardLikeButton.classList.contains('card__like-button_is-active')) {
+            card = await putLike(card._id);
+        } else {
+            card = await deleteLike(card._id);
+        }
+        cardLikeButton.classList.toggle('card__like-button_is-active');
+        like_number.innerHTML = card.likes.length;
+    })
 }
 
 function cardDelete() {
     let cardDeleteButtons = document.querySelectorAll('.card__delete-button');
 
-    cardDeleteButtons.forEach(function (elem) {
+    cardDeleteButtons.forEach(function (elem, index) {
         elem.addEventListener('click', function () {
             elem.closest('.card').remove();
+            deleteCard(initialCards[index]._id);
         })
     })
 }
@@ -205,27 +241,44 @@ function cardOpen(card) {
     caption.innerHTML = card.name;
 }
 
-function cardFormSubmit(evt) {
+async function cardFormSubmit(evt) {
     evt.preventDefault();
+
+    cardPopup.querySelector('.popup__button').innerText = 'Сохранение...';
 
     let cardNameValue = cardName.value;
     let cardLinkValue = cardLink.value;
 
-    initialCards.unshift({
-        name: cardNameValue,
-        link: cardLinkValue,
-    })
+    postCard(cardNameValue, cardLinkValue)
+    .finally(() => {
+        cardPopup.querySelector('.popup__button').innerText = 'Сохранить.';
+    });
+
+    initialCards = await getInitialCards();
 
     placesList.prepend(createCard(initialCards[0]));
     
     cardName.value = '';
     cardLink.value = '';
 
-    cardLike();
-
     cardDelete();
 
     closeModal(cardPopup);
+}
+
+async function avatarFormSubmit(evt) {
+    evt.preventDefault();
+
+    avatarPopup.querySelector('.popup__button').innerHTML = 'Сохранение...';
+
+    let avatarLinkValue = avatarLink.value;
+    let newAvatar = await patchAvatar(avatarLinkValue).finally(() => {
+        avatarPopup.querySelector('.popup__button').innerHTML = 'Сохранить';
+    });
+
+    avatarEditButton.style.backgroundImage = `url(${newAvatar.avatar})`;
+
+    closeModal(avatarPopup);
 }
 
 profileFormElement.addEventListener('submit', handleProfileFormSubmit);
@@ -257,6 +310,17 @@ imagePopupClose.addEventListener('click', function () {
 })
 
 
+avatarFormElement.addEventListener('submit', avatarFormSubmit);
+
+avatarEditButton.addEventListener('click', function() {
+    openModal(avatarPopup);
+})
+
+avatarPopupClose.addEventListener('click', function() {
+    closeModal(avatarPopup);
+})
+
+
 
 initialCards.forEach(function (elem) {
     placesList.append(createCard(elem));
@@ -264,11 +328,11 @@ initialCards.forEach(function (elem) {
 
 cardDelete();
 
-cardLike();
 
 profilePopup.classList.add('popup_is-animated');
 cardPopup.classList.add('popup_is-animated');
 imagePopup.classList.add('popup_is-animated');
+avatarPopup.classList.add('popup_is-animated');
 
 popups.forEach(function (popupElem) {
     popupElem.addEventListener('click', function () {
